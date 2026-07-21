@@ -173,3 +173,19 @@ significant, it interprets marginally and says so.
 
 Arifin WN, et al. Reporting statistical results in medical journals.
 *Malays J Med Sci.* 2016;23(5):1-7.
+
+## Citation
+
+If you use azul in your work, please cite it:
+
+```r
+citation("azul")
+```
+
+> AZul (2026). *azul: Thesis-Style Interpretation of Statistical Models and
+> Tables (MJMS/DrPH).* R package version 0.1.0.
+> https://github.com/azusa-ui/azul-package
+
+For a permanent, citable DOI, connect the GitHub repository to
+[Zenodo](https://zenodo.org) and publish a release; Zenodo mints a DOI you can
+add here and in your thesis.
