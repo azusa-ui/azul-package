@@ -33,3 +33,13 @@ test_that("azul_table uses fixed decimals (no scientific notation)", {
   expect_false(any(grepl("e[+-]", col3)))
   expect_match(col3[1], "\\.[0-9]{3}")        # 3 decimals when digits = 3
 })
+
+test_that("azul_report embeds a figure when figure = TRUE", {
+  skip_if_not_installed("knitr")
+  f <- tempfile(fileext = ".html")
+  out <- azul_report(glm(vs ~ wt + hp, binomial, mtcars), file = f,
+                     figure = TRUE, assumptions = FALSE)
+  txt <- paste(readLines(out), collapse = "\n")
+  expect_match(txt, "<h2>Figure</h2>")
+  expect_match(txt, "data:image/png;base64")
+})

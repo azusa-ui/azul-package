@@ -4,7 +4,7 @@
 \title{Publication-ready tables and reports}
 \usage{
 azul_table(x, measure = NULL, flextable = FALSE, digits = 2, ...)
-azul_report(x, file = "azul_report.docx", assumptions = TRUE, ...)
+azul_report(x, file = "azul_report.docx", assumptions = TRUE, figure = TRUE, digits = 2, ...)
 }
 \arguments{
 \item{x}{An \code{azul_interpretation} or a fitted model.}
@@ -15,6 +15,8 @@ azul_report(x, file = "azul_report.docx", assumptions = TRUE, ...)
 \item{file}{Output path for the report: \code{.docx} (needs 'officer' +
 'flextable') or \code{.html} (no extra dependencies).}
 \item{assumptions}{Append \code{\link{check_assumptions}} output for models.}
+
+\item{figure}{Embed the \code{\link{azul_plot}} figure in the report (default TRUE).}
 \item{...}{Passed to \code{\link{interpret}} when \code{x} is a model.}
 }
 \value{\code{azul_table} returns a data frame (class \code{azul_table}) or a

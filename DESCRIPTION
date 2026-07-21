@@ -47,6 +47,7 @@ Suggests:
     caret,
     epiDisplay,
     psych,
+    knitr,
     flextable,
     officer,
     rpart,
