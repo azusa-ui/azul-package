@@ -2,14 +2,12 @@ citHeader("To cite the azul package in publications, use:")
 
 bibentry(
   bibtype  = "Manual",
-  title    = "{azul}: Thesis-Style Interpretation of Statistical Models and Tables (MJMS/DrPH)",
+  title    = "{azul}: Thesis-Style Interpretation of Statistical Models and Tables",
   author   = c(person("AZul"),
                person("Fittri", "Fahmi", role = "ctb")),
   year     = "2026",
-  note     = "R package version 0.1.0",
   url      = "https://github.com/azusa-ui/azul-package",
   textVersion = paste(
     "AZul (2026). azul: Thesis-Style Interpretation of Statistical Models",
-    "and Tables (MJMS/DrPH). R package version 0.1.0.",
-    "https://github.com/azusa-ui/azul-package")
+    "and Tables. https://github.com/azusa-ui/azul-package")
 )
