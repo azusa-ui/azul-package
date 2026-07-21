@@ -1,5 +1,11 @@
 # azul
 
+<!-- badges: start -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![R-CMD-check](https://github.com/azusa-ui/azul/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/azusa-ui/azul/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
 **Thesis-style interpretation of statistical models, tests and tables — in Malaysian Journal of Medical Sciences (MJMS) / DrPH prose.**
 
 `azul` turns a fitted model, a hypothesis test, a result table, or even a raw

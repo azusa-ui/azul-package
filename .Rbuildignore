@@ -2,3 +2,7 @@
 ^azul\.Rcheck$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^_pkgdown\.yml$
+^\.github$
+^docs$
+^pkgdown$

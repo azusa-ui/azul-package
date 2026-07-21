@@ -1,0 +1,24 @@
+url: https://azusa-ui.github.io/azul
+template:
+  bootstrap: 5
+reference:
+- title: "Core"
+  desc: "The main entry points."
+  contents:
+  - interpret
+  - interpret_table
+  - interpret_descriptive
+- title: "Specialised interpreters"
+  contents:
+  - interpret_diagnostic
+  - interpret_additive_interaction
+  - interpret_its
+  - interpret_smr
+  - interpret_lisa
+  - interpret_getis
+- title: "Formatting helpers"
+  contents:
+  - fmt_num
+  - fmt_p
+  - fmt_ci
+  - cor_strength
