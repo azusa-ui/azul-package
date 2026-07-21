@@ -8,16 +8,18 @@
 
 **Thesis-style interpretation of statistical models, tests and tables — in Malaysian Journal of Medical Sciences (MJMS) / DrPH prose.**
 
-`azul` turns a fitted model, a hypothesis test, a result table, or even a raw
-dataset into a ready-to-paste interpretation written in third-person,
-past-tense academic prose. Every point estimate is reported with its 95%
-confidence interval, the test is named, reference categories are stated, and
-the key assumptions to check are listed. Formatting follows the MJMS reporting
-style (Arifin et al. 2016) and SAMPL guidelines.
+`azul` is a full **fit → interpret → check → tabulate → visualise → report**
+workflow for statistical analysis, all in third-person, past-tense academic
+prose. Every point estimate is reported with its 95% confidence interval, the
+test is named, reference categories are stated, and assumptions are checked.
+Formatting follows the MJMS reporting style (Arifin et al. 2016) and SAMPL
+guidelines.
 
-There is one entry point — `interpret()` — which dispatches on the class of the
-object you give it. Tables and datasets are also handled by `interpret_table()`,
-`interpret_descriptive()` and `interpret_diagnostic()`.
+The core entry point is `interpret()`, which dispatches on the class of the
+object you give it (~50 model and test types). Around it sit companion
+functions to check assumptions, build publication-ready tables and reports, and
+draw-and-interpret figures. Run `azul_help()` for a one-line index of every
+function, or `?azul` for the package overview.
 
 ## Installation
 
@@ -58,6 +60,44 @@ interpret_table(tab, type = "OR", outcome = "coronary artery disease")
 `print()` shows a spaced, sub-headed layout for reading on screen;
 `as.character()` (or `cat(format(x))`) returns the single flowing paragraph for
 pasting into a manuscript.
+
+## The full workflow
+
+From one fitted model you can produce a complete results section:
+
+```r
+m <- coxph(Surv(time, status) ~ age + sex + ph.ecog, data = survival::lung)
+
+interpret(m, outcome = "death")     # 1. manuscript prose (with AT A GLANCE summary)
+check_assumptions(m)                # 2. run the diagnostics (PH, etc.)
+azul_table(m)                       # 3. publication-ready 3-line APA table
+azul_plot(m)                        # 4. the right figure (here a HR forest plot) + its reading
+
+# 5. one call -> a Word (or HTML) document with prose + table + figure + checks
+azul_report(m, file = "results.docx", outcome = "death")
+```
+
+## Workflow functions
+
+| Function | Purpose |
+|---|---|
+| `interpret()` | model / test / table / dataset → MJMS prose |
+| `check_assumptions()` | run diagnostics (normality, homoscedasticity, VIF, PH, overdispersion, Hosmer-Lemeshow, Levene) |
+| `azul_table()` | publication-ready estimates table (three-line APA, bold predictors, adjustment note; `digits =` control) |
+| `azul_report()` | one-call Word/HTML report: prose + table + figure + assumption checks |
+| `azul_plot()` | draw **and interpret** the right figure (16 types, see below) |
+| `azul_survtable()` | parametric survival table (PH/PO and AFT side by side; exp/Weibull/log-logistic/log-normal) |
+| `azul_survcompare()` | rank parametric survival distributions by AIC |
+| `azul_arima_suggest()` | data-driven differencing + a starting ARIMA/SARIMA order |
+| `azul_help()` | one-line index of every function |
+
+### `azul_plot()` figure types
+
+`forest`, `km`, `roc`, `residuals`, `forest_meta`, `ts` (series+ACF+PACF),
+`tsdiag` (ARIMA residuals), `acf`, `caterpillar` (mixed-model random effects),
+`schoenfeld` (Cox PH), `funnel` (meta-analysis), `calibration` (logistic),
+`effect` (interaction / simple slopes), `qqrand`, `scree`. Each is auto-selected
+by object class and returns a plain-language interpretation.
 
 ## What it interprets
 
@@ -103,6 +143,13 @@ pasting into a manuscript.
 **Machine learning**
 - CART (`rpart`), random forest (`randomForest`), SVM (`e1071`),
   neural nets (`nnet`, `neuralnet`), tuned models (`caret::train`)
+
+**Epidemiology & specialised**
+- Additive interaction: RERI, AP, synergy index (`interpret_additive_interaction()`)
+- Interrupted time series: level & slope change (`interpret_its()`)
+- Spatial: Moran's I / Geary's C, LISA, Getis-Ord Gi*, SMR, spatial lag/error regression
+- Time series: ARIMA/SARIMA, ADF / KPSS / Ljung-Box
+- Meta-analysis: `metafor::rma`, `meta` (pooled effect, I², Q)
 
 **Assumption / helper outputs**
 - `ordinal::nominal_test` / `scale_test`, `epiDisplay::poisgof`, gtsummary tables
