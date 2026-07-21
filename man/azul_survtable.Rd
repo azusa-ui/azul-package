@@ -15,7 +15,7 @@ azul_survtable(
 }
 \arguments{
 \item{model}{A \code{\link[survival:survreg]{survival::survreg()}} object fitted with \code{dist} one of
-\code{"exponential"}, \code{"weibull"} or \code{"loglogistic"}.}
+\code{"exponential"}, \code{"weibull"}, \code{"loglogistic"} or \code{"lognormal"} (AFT-only).}
 
 \item{exponentiate}{Logical. If \code{TRUE} (default) estimates, confidence
 intervals and standard errors are shown on the ratio scale (HR/OR, TR). If

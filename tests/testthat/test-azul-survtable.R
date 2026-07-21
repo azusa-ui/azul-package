@@ -17,3 +17,11 @@ test_that("azul_survtable handles exponential and log-logistic distributions", {
   expect_s3_class(azul_survtable(ex), "flextable")
   expect_s3_class(azul_survtable(ll), "flextable")
 })
+
+test_that("azul_survtable supports log-normal (AFT-only) models", {
+  skip_if_not_installed("survival"); skip_if_not_installed("flextable")
+  m <- survival::survreg(survival::Surv(time, status) ~ sex,
+                         data = survival::lung, dist = "lognormal")
+  ft <- azul_survtable(m)
+  expect_s3_class(ft, "flextable")
+})

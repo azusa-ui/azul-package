@@ -63,7 +63,50 @@ azul_survtable <- function(model,
   info  <- .azul_survtable_detect(model)
   est   <- .azul_survtable_estimates(model)
   body  <- .azul_survtable_body(model, est, exponentiate, info, digits)
-  .azul_survtable_flextable(body, model, info, exponentiate, outcome, font, font_size)
+  if (isTRUE(info$aft_only))
+    .azul_survtable_flextable_aft(body, model, info, exponentiate, outcome, font, font_size)
+  else
+    .azul_survtable_flextable(body, model, info, exponentiate, outcome, font, font_size)
+}
+
+# AFT-only table (log-normal): a single time-ratio block, no PH/PO metric.
+.azul_survtable_flextable_aft <- function(body, model, info, exponentiate, outcome,
+                                          font, font_size) {
+  est_r <- if (exponentiate) "TR" else "log(time)"
+  dat <- body[, c("term", "aft_est", "aft_ci", "aft_se", "stat", "p")]
+  ft <- flextable::flextable(dat)
+  ft <- flextable::set_header_labels(ft, term = "Variables",
+    aft_est = est_r, aft_ci = "95% CI", aft_se = "SE",
+    stat = "Statistic", p = "p-value")
+  ft <- flextable::add_header_row(ft, top = TRUE,
+    values = c("Variables", "Accelerated Failure Time (AFT)", "Statistic", "p-value"),
+    colwidths = c(1, 3, 1, 1))
+  ft <- flextable::merge_v(ft, part = "header", j = c(1, 5, 6))
+  outcome_lab <- if (is.null(outcome)) .azul_survtable_outcome(model) else outcome
+  ft <- flextable::set_caption(ft, caption = sprintf(
+    "Accelerated failure time survival model for %s, assuming %s distribution",
+    outcome_lab, info$dist_label))
+  ft <- flextable::add_footer_lines(ft, values = c(
+    "The log-normal model has no proportional-hazards or proportional-odds form; only the time ratio (TR) is reported.",
+    "Statistic and p-value are the Wald test on the log scale."))
+  ft <- flextable::font(ft, fontname = font, part = "all")
+  ft <- flextable::fontsize(ft, size = font_size, part = "all")
+  ft <- flextable::fontsize(ft, size = font_size - 1, part = "footer")
+  ft <- flextable::align(ft, part = "header", align = "center")
+  ft <- flextable::align(ft, j = 1, part = "all", align = "left")
+  ft <- flextable::align(ft, j = 2:6, part = "body", align = "center")
+  ft <- flextable::bold(ft, part = "header", bold = TRUE)
+  vbold <- which(body$rowtype %in% c("group", "numeric", "flat"))
+  if (length(vbold)) ft <- flextable::bold(ft, i = vbold, j = 1, part = "body")
+  ind <- which(body$indent == 1L)
+  if (length(ind)) ft <- flextable::padding(ft, i = ind, j = 1, padding.left = 16)
+  bd <- officer::fp_border(color = "black", width = 1)
+  ft <- flextable::border_remove(ft)
+  ft <- flextable::hline_top(ft, part = "header", border = bd)
+  ft <- flextable::hline(ft, i = 1, j = 2:4, part = "header", border = bd)
+  ft <- flextable::hline_bottom(ft, part = "header", border = bd)
+  ft <- flextable::hline_bottom(ft, part = "body", border = bd)
+  flextable::autofit(ft)
 }
 
 
@@ -72,23 +115,29 @@ azul_survtable <- function(model,
 .azul_survtable_detect <- function(model) {
   d <- model$dist
   if (identical(d, "exponential")) {
-    list(dist = "exponential", dist_label = "exponential",
+    list(dist = "exponential", dist_label = "exponential", aft_only = FALSE,
          left_metric = "PH", left_span = "Proportional Hazard (PH)",
          est_ratio = "HR", est_log = "log(hazard)",
          caption_metric = "Proportional hazard")
   } else if (identical(d, "weibull")) {
-    list(dist = "weibull", dist_label = "Weibull",
+    list(dist = "weibull", dist_label = "Weibull", aft_only = FALSE,
          left_metric = "PH", left_span = "Proportional Hazard (PH)",
          est_ratio = "HR", est_log = "log(hazard)",
          caption_metric = "Proportional hazard")
   } else if (identical(d, "loglogistic")) {
-    list(dist = "loglogistic", dist_label = "log-logistic",
+    list(dist = "loglogistic", dist_label = "log-logistic", aft_only = FALSE,
          left_metric = "PO", left_span = "Proportional Odds (PO)",
          est_ratio = "OR", est_log = "log(odds)",
          caption_metric = "Proportional odds")
+  } else if (identical(d, "lognormal")) {
+    # log-normal has no proportional-hazards or proportional-odds form:
+    # it is reported on the accelerated failure time (time ratio) metric only.
+    list(dist = "lognormal", dist_label = "log-normal", aft_only = TRUE,
+         left_metric = NA, left_span = NA, est_ratio = NA, est_log = NA,
+         caption_metric = "Accelerated failure time")
   } else {
-    stop("azul_survtable() supports dist = 'exponential', 'weibull' or 'loglogistic'; ",
-         "got '", d, "'.", call. = FALSE)
+    stop("azul_survtable() supports dist = 'exponential', 'weibull', ",
+         "'loglogistic' or 'lognormal'; got '", d, "'.", call. = FALSE)
   }
 }
 
