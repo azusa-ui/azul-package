@@ -93,11 +93,38 @@ interpret.default <- function(object, ...) {
   cat(strrep("-", nchar(title)), "\n", sep = "")
 }
 
+# A short, plain-language "at a glance" line derived from the stored estimates:
+# how many terms were statistically significant and which. Generic across
+# interpreters because they all store $estimates. alpha defaults to 0.05.
+.at_a_glance <- function(x, alpha = 0.05) {
+  est <- x$estimates
+  if (is.null(est) || !is.data.frame(est) || !("p.value" %in% names(est))) return(NULL)
+  p <- suppressWarnings(as.numeric(est$p.value))
+  if (!length(p) || all(is.na(p))) return(NULL)
+  term <- if ("term" %in% names(est)) as.character(est$term)
+          else if ("measure" %in% names(est)) as.character(est$measure)
+          else if (!is.null(rownames(est))) rownames(est) else as.character(seq_along(p))
+  sig <- which(!is.na(p) & p < alpha)
+  n <- sum(!is.na(p))
+  if (!length(sig))
+    return(paste0("None of the ", n, " reported term",
+                  if (n != 1) "s were" else " was", " statistically significant at P < ", alpha, "."))
+  named <- paste0(term[sig], " (", vapply(p[sig], function(pp) fmt_p(pp), character(1)), ")")
+  paste0(length(sig), " of ", n, " term", if (n != 1) "s" else "",
+         " reached statistical significance (P < ", alpha, "): ", .join_and(named), ".")
+}
+
 #' @export
 print.azul_interpretation <- function(x, ...) {
   cat("=======================================================================\n")
   cat("  azul interpretation: ", x$method, "\n", sep = "")
   cat("=======================================================================\n")
+
+  glance <- .at_a_glance(x)
+  if (!is.null(glance)) {
+    .hdr("AT A GLANCE")
+    cat(paste(.split_sentences(glance), collapse = "\n"), "\n", sep = "")
+  }
 
   .hdr("INTERPRETATION")
   # split each stored block independently so labelled subheadings (which end
@@ -123,6 +150,17 @@ print.azul_interpretation <- function(x, ...) {
 #' @export
 format.azul_interpretation <- function(x, ...) {
   paste(x$paragraph, collapse = "\n\n")
+}
+
+#' @export
+summary.azul_interpretation <- function(object, ...) {
+  cat(object$method, "\n", strrep("-", nchar(object$method)), "\n", sep = "")
+  glance <- .at_a_glance(object)
+  if (!is.null(glance)) cat("At a glance: ", glance, "\n\n", sep = "")
+  # the headline: first sentence of the interpretation
+  first <- .split_sentences(object$paragraph)[1]
+  cat(first, "\n")
+  invisible(object)
 }
 
 #' @export

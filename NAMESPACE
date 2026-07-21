@@ -67,6 +67,7 @@ S3method(interpret, zeroinfl)
 S3method(print, azul_interpretation)
 S3method(format, azul_interpretation)
 S3method(as.character, azul_interpretation)
+S3method(summary, azul_interpretation)
 
 importFrom(stats, coef, confint, formula, family, na.omit, pchisq, pf,
            pnorm, qnorm, setNames)
