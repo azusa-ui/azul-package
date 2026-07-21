@@ -18,3 +18,11 @@ test_that("Ljung-Box, ADF and KPSS htests are interpreted", {
     method = "KPSS Test for Level Stationarity"), class = "htest")
   expect_match(txt(interpret(kp)), "KPSS")
 })
+
+test_that("azul_arima_suggest reports differencing and a starting model", {
+  skip_if_not_installed("forecast")
+  s <- azul_arima_suggest(AirPassengers)
+  expect_s3_class(s, "azul_interpretation")
+  expect_match(as.character(s), "difference")
+  expect_match(as.character(s), "ARIMA")
+})
