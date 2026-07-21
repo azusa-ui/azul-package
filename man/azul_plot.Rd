@@ -2,7 +2,8 @@
 \alias{azul_plot}
 \title{Draw and interpret the figure for a model}
 \usage{
-azul_plot(x, type = c("auto", "forest", "km", "roc", "residuals", "forest_meta"),
+azul_plot(x, type = c("auto", "forest", "km", "roc", "residuals", "forest_meta",
+  "ts", "tsdiag", "acf"),
   main = NULL, ...)
 }
 \arguments{

@@ -7,6 +7,8 @@
   if (inherits(x, "survfit")) return("km")
   if (inherits(x, "roc")) return("roc")
   if (inherits(x, c("rma", "meta"))) return("forest_meta")
+  if (inherits(x, c("Arima", "arima"))) return("tsdiag")
+  if (inherits(x, "ts")) return("ts")
   if (inherits(x, c("coxph", "glm", "lm", "negbin", "polr", "clm", "multinom",
                     "azul_interpretation"))) return("forest")
   "forest"
@@ -31,7 +33,8 @@
 #' @examples
 #' azul_plot(glm(am ~ wt + hp, within(mtcars, am <- factor(am)), family = binomial))
 #' @export
-azul_plot <- function(x, type = c("auto", "forest", "km", "roc", "residuals", "forest_meta"),
+azul_plot <- function(x, type = c("auto", "forest", "km", "roc", "residuals",
+                                  "forest_meta", "ts", "tsdiag", "acf"),
                       main = NULL, ...) {
   type <- match.arg(type)
   if (type == "auto") type <- .azul_plot_type(x)
@@ -41,7 +44,51 @@ azul_plot <- function(x, type = c("auto", "forest", "km", "roc", "residuals", "f
     roc          = .azul_roc(x, main = main, ...),
     residuals    = .azul_residuals(x, ...),
     forest_meta  = .azul_forest_meta(x, main = main, ...),
+    ts           = .azul_ts(x, main = main, ...),
+    tsdiag       = .azul_tsdiag(x, ...),
+    acf          = .azul_acf(x, ...),
     stop("Unknown plot type '", type, "'.", call. = FALSE))
+}
+
+# time series identification: the series, its ACF and PACF
+.azul_ts <- function(x, main = NULL, ...) {
+  op <- graphics::par(mfrow = c(3, 1), mar = c(4, 4, 2, 1)); on.exit(graphics::par(op))
+  graphics::plot(x, ylab = "Value", xlab = "Time", main = main %||% "Time series", ...)
+  stats::acf(x, main = "ACF")
+  stats::pacf(x, main = "PACF")
+  invisible(new_interpretation("Time series identification (ACF / PACF)",
+    c("A slowly-decaying ACF suggests non-stationarity, so difference the series (d) until it settles.",
+      "ACF cutting off after lag q with a tailing PACF suggests an MA(q) term.",
+      "PACF cutting off after lag p with a tailing ACF suggests an AR(p) term.",
+      "Spikes at seasonal lags (e.g. 12, 24) indicate a seasonal component."),
+    notes = "Figure drawn by azul_plot(); confirm stationarity with an ADF/KPSS test."))
+}
+
+# ARIMA residual diagnostics: residuals over time, ACF and PACF of residuals
+.azul_tsdiag <- function(x, ...) {
+  r <- stats::residuals(x)
+  op <- graphics::par(mfrow = c(3, 1), mar = c(4, 4, 2, 1)); on.exit(graphics::par(op))
+  graphics::plot(r, ylab = "Residuals", xlab = "Time", main = "Residuals over time")
+  graphics::abline(h = 0, lty = 2, col = "grey40")
+  stats::acf(r, main = "ACF of residuals", na.action = stats::na.pass)
+  stats::pacf(r, main = "PACF of residuals", na.action = stats::na.pass)
+  invisible(new_interpretation("ARIMA residual diagnostics",
+    c("For an adequate model the residuals should be white noise: nearly all ACF and PACF bars fall within the confidence bands.",
+      "A pattern or spikes beyond the bands indicate remaining autocorrelation; revise the (p, d, q) orders.",
+      "The residuals over time should look random around zero with roughly constant variance."),
+    notes = "Figure drawn by azul_plot(); confirm with the Ljung-Box test (Box.test, type = 'Ljung-Box')."))
+}
+
+# ACF + PACF of a series or of a model's residuals
+.azul_acf <- function(x, ...) {
+  v <- if (inherits(x, c("Arima", "arima", "lm", "glm"))) stats::residuals(x) else x
+  op <- graphics::par(mfrow = c(1, 2)); on.exit(graphics::par(op))
+  stats::acf(v, main = "ACF", na.action = stats::na.pass, ...)
+  stats::pacf(v, main = "PACF", na.action = stats::na.pass, ...)
+  invisible(new_interpretation("Autocorrelation (ACF / PACF)",
+    c("Bars within the confidence bands indicate no significant autocorrelation at that lag.",
+      "ACF identifies MA order (cut-off), PACF identifies AR order (cut-off)."),
+    notes = "Figure drawn by azul_plot()."))
 }
 
 # forest plot from a model's estimates table

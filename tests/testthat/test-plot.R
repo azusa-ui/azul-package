@@ -23,3 +23,16 @@ test_that("azul_plot handles km, residuals and roc", {
   grDevices::dev.off()
   expect_true(file.exists(g))
 })
+
+test_that("azul_plot draws time-series ACF/PACF and ARIMA diagnostics", {
+  set.seed(1); x <- ts(cumsum(rnorm(120)) + sin((1:120)/6), frequency = 12)
+  f <- tempfile(fileext = ".png"); grDevices::png(f)
+  s1 <- azul_plot(x)                              # ts -> series + ACF + PACF
+  s2 <- azul_plot(x, type = "acf")               # ACF + PACF
+  m <- arima(x, order = c(1, 1, 1))
+  s3 <- azul_plot(m)                             # tsdiag -> residual ACF/PACF
+  grDevices::dev.off()
+  expect_true(file.exists(f))
+  expect_match(as.character(s1), "ACF")
+  expect_match(as.character(s3), "white noise")
+})
