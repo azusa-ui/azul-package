@@ -44,6 +44,8 @@ Suggests:
     caret,
     epiDisplay,
     psych,
+    flextable,
+    officer,
     rpart,
     randomForest,
     e1071,
