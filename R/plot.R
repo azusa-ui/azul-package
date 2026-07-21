@@ -9,6 +9,7 @@
   if (inherits(x, c("rma", "meta"))) return("forest_meta")
   if (inherits(x, c("Arima", "arima"))) return("tsdiag")
   if (inherits(x, "ts")) return("ts")
+  if (inherits(x, c("lmerMod", "glmerMod", "lmerModLmerTest", "lme"))) return("caterpillar")
   if (inherits(x, c("coxph", "glm", "lm", "negbin", "polr", "clm", "multinom",
                     "azul_interpretation"))) return("forest")
   "forest"
@@ -34,7 +35,8 @@
 #' azul_plot(glm(am ~ wt + hp, within(mtcars, am <- factor(am)), family = binomial))
 #' @export
 azul_plot <- function(x, type = c("auto", "forest", "km", "roc", "residuals",
-                                  "forest_meta", "ts", "tsdiag", "acf"),
+                                  "forest_meta", "ts", "tsdiag", "acf",
+                                  "caterpillar", "schoenfeld", "funnel", "calibration"),
                       main = NULL, ...) {
   type <- match.arg(type)
   if (type == "auto") type <- .azul_plot_type(x)
@@ -47,7 +49,97 @@ azul_plot <- function(x, type = c("auto", "forest", "km", "roc", "residuals",
     ts           = .azul_ts(x, main = main, ...),
     tsdiag       = .azul_tsdiag(x, ...),
     acf          = .azul_acf(x, ...),
+    caterpillar  = .azul_caterpillar(x, main = main, ...),
+    schoenfeld   = .azul_schoenfeld(x, ...),
+    funnel       = .azul_funnel(x, main = main, ...),
+    calibration  = .azul_calibration(x, main = main, ...),
     stop("Unknown plot type '", type, "'.", call. = FALSE))
+}
+
+# caterpillar plot of mixed-model random effects (BLUPs with intervals)
+.azul_caterpillar <- function(x, main = NULL, ...) {
+  re <- NULL; condvar <- FALSE
+  if (inherits(x, c("lmerMod", "glmerMod", "lmerModLmerTest")) &&
+      requireNamespace("lme4", quietly = TRUE)) {
+    re <- tryCatch(lme4::ranef(x, condVar = TRUE), error = function(e) NULL); condvar <- TRUE
+  } else if (inherits(x, "lme") && requireNamespace("nlme", quietly = TRUE)) {
+    re <- tryCatch(nlme::ranef(x), error = function(e) NULL)
+  }
+  if (is.null(re) || !length(re)) stop("Could not extract random effects for a caterpillar plot.", call. = FALSE)
+  g <- names(re)[1]; df <- as.data.frame(re[[g]])
+  term <- if ("(Intercept)" %in% names(df)) "(Intercept)" else names(df)[1]
+  est <- df[[term]]
+  se <- rep(NA_real_, length(est))
+  if (condvar) {
+    pv <- attr(re[[g]], "postVar")
+    if (!is.null(pv)) { j <- match(term, names(df)); se <- sqrt(pv[j, j, ]) }
+  }
+  ord <- order(est); est <- est[ord]; se <- se[ord]; n <- length(est)
+  lo <- est - 1.96 * se; hi <- est + 1.96 * se
+  ylim <- range(c(est, lo, hi, 0), na.rm = TRUE)
+  op <- graphics::par(mar = c(4, 4, 3, 1)); on.exit(graphics::par(op))
+  graphics::plot(seq_len(n), est, ylim = ylim, pch = 19, xlab = paste0(g, " (sorted)"),
+    ylab = paste0("Random ", tolower(term), " (BLUP)"),
+    main = main %||% paste0("Caterpillar plot: ", g, " random effects"), ...)
+  if (any(is.finite(se))) graphics::segments(seq_len(n), lo, seq_len(n), hi, col = "grey50")
+  graphics::abline(h = 0, lty = 2, col = "red")
+  excl <- if (any(is.finite(se))) sum(lo > 0 | hi < 0, na.rm = TRUE) else NA
+  body <- paste0("Caterpillar plot of the ", n, " '", g, "' random ", tolower(term),
+    "s (best linear unbiased predictors), sorted low to high",
+    if (condvar) " with 95% prediction intervals" else "", ". The dashed line is the overall average (0). ",
+    if (!is.na(excl)) paste0(excl, " cluster(s) had an interval excluding 0, i.e. departing from the average. ") else "",
+    "A wide spread indicates substantial between-cluster variation (quantified by the ICC).")
+  invisible(new_interpretation(paste0("Caterpillar plot: ", g, " random effects"), body,
+    notes = "Figure drawn by azul_plot()."))
+}
+
+# Schoenfeld residuals for the Cox proportional-hazards assumption
+.azul_schoenfeld <- function(x, ...) {
+  if (!requireNamespace("survival", quietly = TRUE)) stop("Package 'survival' is required.", call. = FALSE)
+  zph <- survival::cox.zph(x)
+  np <- nrow(zph$table) - 1
+  op <- graphics::par(mfrow = c(ceiling(np / 2), min(np, 2)), mar = c(4, 4, 2, 1)); on.exit(graphics::par(op))
+  graphics::plot(zph, ...)
+  gp <- zph$table["GLOBAL", "p"]
+  invisible(new_interpretation("Schoenfeld residuals (proportional hazards)",
+    paste0("Scaled Schoenfeld residuals against time for each covariate. A roughly horizontal (flat) smooth ",
+      "supports proportional hazards; a clear time trend indicates a violation. The global test gave ",
+      fmt_p(gp), " (a non-significant result supports the assumption)."),
+    notes = "Figure drawn by azul_plot(); see also check_assumptions() on the Cox model."))
+}
+
+# funnel plot for meta-analysis (small-study / publication bias)
+.azul_funnel <- function(x, main = NULL, ...) {
+  if (inherits(x, "rma") && requireNamespace("metafor", quietly = TRUE))
+    metafor::funnel(x, main = main %||% "Funnel plot", ...)
+  else if (inherits(x, "meta") && requireNamespace("meta", quietly = TRUE))
+    meta::funnel(x, ...)
+  else stop("Install 'metafor' or 'meta' for a funnel plot.", call. = FALSE)
+  invisible(new_interpretation("Funnel plot (small-study effects)",
+    c("Each point is a study: effect size (x) against its precision (y, larger = more precise).",
+      "A symmetric, inverted-funnel shape argues against publication/small-study bias.",
+      "Asymmetry (gaps at the bottom) suggests missing small negative studies; confirm with Egger's test."),
+    notes = "Figure drawn by azul_plot()."))
+}
+
+# calibration plot for a logistic model (observed vs predicted by decile)
+.azul_calibration <- function(x, main = NULL, groups = 10, ...) {
+  if (!inherits(x, "glm") || stats::family(x)$family != "binomial")
+    stop("Calibration plots apply to binomial glm (logistic) models.", call. = FALSE)
+  p <- stats::fitted(x); y <- x$y
+  br <- unique(stats::quantile(p, probs = seq(0, 1, length.out = groups + 1), na.rm = TRUE))
+  bin <- cut(p, breaks = br, include.lowest = TRUE)
+  obs <- tapply(y, bin, mean); pred <- tapply(p, bin, mean)
+  op <- graphics::par(mar = c(4, 4, 3, 1)); on.exit(graphics::par(op))
+  graphics::plot(pred, obs, xlim = 0:1, ylim = 0:1, pch = 19,
+    xlab = "Predicted probability", ylab = "Observed proportion",
+    main = main %||% "Calibration plot"); graphics::abline(0, 1, lty = 2, col = "grey40")
+  graphics::lines(pred, obs, col = "steelblue")
+  invisible(new_interpretation("Calibration plot (logistic model)",
+    c("Points on the diagonal indicate well-calibrated predictions (observed = predicted).",
+      "Points below the line indicate over-prediction; above, under-prediction.",
+      "Pair with the Hosmer-Lemeshow test for a formal calibration check."),
+    notes = "Figure drawn by azul_plot()."))
 }
 
 # time series identification: the series, its ACF and PACF

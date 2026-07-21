@@ -3,7 +3,7 @@
 \title{Draw and interpret the figure for a model}
 \usage{
 azul_plot(x, type = c("auto", "forest", "km", "roc", "residuals", "forest_meta",
-  "ts", "tsdiag", "acf"),
+  "ts", "tsdiag", "acf", "caterpillar", "schoenfeld", "funnel", "calibration"),
   main = NULL, ...)
 }
 \arguments{

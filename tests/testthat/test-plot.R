@@ -36,3 +36,24 @@ test_that("azul_plot draws time-series ACF/PACF and ARIMA diagnostics", {
   expect_match(as.character(s1), "ACF")
   expect_match(as.character(s3), "white noise")
 })
+
+test_that("azul_plot draws mixed-model caterpillar and Cox Schoenfeld plots", {
+  skip_if_not_installed("lme4"); skip_if_not_installed("survival")
+  set.seed(1); n <- 300
+  d <- data.frame(x = rnorm(n), g = factor(sample(1:20, n, TRUE)))
+  d$y <- 2 * d$x + rnorm(20)[as.integer(d$g)] * 2 + rnorm(n)
+  f <- tempfile(fileext = ".png"); grDevices::png(f)
+  s1 <- azul_plot(lme4::lmer(y ~ x + (1 | g), d))
+  cx <- survival::coxph(survival::Surv(time, status) ~ age + sex, survival::lung)
+  s2 <- azul_plot(cx, type = "schoenfeld")
+  grDevices::dev.off()
+  expect_match(as.character(s1), "aterpillar|BLUP")
+  expect_match(as.character(s2), "Schoenfeld|proportional hazards")
+})
+
+test_that("azul_plot draws a calibration plot for logistic models", {
+  f <- tempfile(fileext = ".png"); grDevices::png(f)
+  s <- azul_plot(glm(vs ~ wt + hp + mpg, binomial, mtcars), type = "calibration")
+  grDevices::dev.off()
+  expect_match(as.character(s), "alibrat")
+})
