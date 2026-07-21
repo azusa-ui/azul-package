@@ -101,10 +101,10 @@ interpret_table <- function(x, type = c("OR","HR","IRR","RRR","beta","mean_diff"
     if (est >= 1) {
       pct <- (est - 1) * 100
       times <- if (est >= 2) paste0(" (approximately ", fmt_num(est, 1), " times the ", meta$noun, ")") else ""
-      plain <- paste0("This indicates about ", fmt_num(pct, 0), "% higher ", meta$noun,
+      plain <- paste0("This indicates about ", fmt_num(pct, 1), "% higher ", meta$noun,
                       " of ", tgt, times, ".")
     } else {
-      plain <- paste0("This indicates about ", fmt_num((1 - est) * 100, 0), "% lower ", meta$noun,
+      plain <- paste0("This indicates about ", fmt_num((1 - est) * 100, 1), "% lower ", meta$noun,
                       " of ", tgt, ".")
     }
     sub <- if (!is.na(cat)) paste0(term, ", ", cat,

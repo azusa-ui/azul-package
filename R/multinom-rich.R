@@ -51,20 +51,20 @@
     pct <- (r$rrr - 1) * 100
     times <- if (r$rrr >= 2) paste0(" (approximately ", fmt_num(r$rrr, 1), " times the relative risk)") else ""
     if (r$is_factor)
-      paste0("This indicates that the ", r$level, " group had about ", fmt_num(pct, 0),
+      paste0("This indicates that the ", r$level, " group had about ", fmt_num(pct, 1),
              "% higher relative risk of being in the ", r$cat, " category (relative to ", r$outref,
              ")", times, ", compared with the ", r$ref, " group.")
     else
-      paste0("This indicates that a one-unit increase was associated with about ", fmt_num(pct, 0),
+      paste0("This indicates that a one-unit increase was associated with about ", fmt_num(pct, 1),
              "% higher relative risk of being in the ", r$cat, " category (relative to ", r$outref, ")", times, ".")
   } else {
     red <- (1 - r$rrr) * 100
     if (r$is_factor)
-      paste0("This indicates that the ", r$level, " group had about ", fmt_num(red, 0),
+      paste0("This indicates that the ", r$level, " group had about ", fmt_num(red, 1),
              "% lower relative risk of being in the ", r$cat, " category (relative to ", r$outref,
              "), compared with the ", r$ref, " group.")
     else
-      paste0("This indicates that each one-unit increase was associated with about ", fmt_num(red, 0),
+      paste0("This indicates that each one-unit increase was associated with about ", fmt_num(red, 1),
              "% lower relative risk of being in the ", r$cat, " category (relative to ", r$outref, ").")
   }
 }

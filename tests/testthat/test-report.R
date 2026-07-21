@@ -24,3 +24,12 @@ test_that("azul_report writes a docx when officer/flextable are available", {
   expect_true(file.exists(out))
   expect_match(out, "\\.docx$")
 })
+
+test_that("azul_table uses fixed decimals (no scientific notation)", {
+  t2 <- azul_table(glm(vs ~ wt + hp, binomial, mtcars), digits = 2)
+  t3 <- azul_table(glm(vs ~ wt + hp, binomial, mtcars), digits = 3)
+  col2 <- t2[[2]]; col3 <- t3[[2]]
+  expect_false(any(grepl("e[+-]", col2)))   # no scientific notation
+  expect_false(any(grepl("e[+-]", col3)))
+  expect_match(col3[1], "\\.[0-9]{3}")        # 3 decimals when digits = 3
+})

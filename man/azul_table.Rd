@@ -3,13 +3,15 @@
 \alias{azul_report}
 \title{Publication-ready tables and reports}
 \usage{
-azul_table(x, measure = NULL, flextable = FALSE, ...)
+azul_table(x, measure = NULL, flextable = FALSE, digits = 2, ...)
 azul_report(x, file = "azul_report.docx", assumptions = TRUE, ...)
 }
 \arguments{
 \item{x}{An \code{azul_interpretation} or a fitted model.}
 \item{measure}{Optional effect-measure label (e.g. "OR"); inferred if NULL.}
 \item{flextable}{If TRUE and 'flextable' is installed, return a flextable.}
+
+\item{digits}{Number of decimal places for the estimate and 95\% CI (default 2). Values are always shown in fixed-decimal form, never scientific notation.}
 \item{file}{Output path for the report: \code{.docx} (needs 'officer' +
 'flextable') or \code{.html} (no extra dependencies).}
 \item{assumptions}{Append \code{\link{check_assumptions}} output for models.}

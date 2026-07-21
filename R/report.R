@@ -31,6 +31,7 @@
 #'
 #' @param x An \code{azul_interpretation} or a fitted model.
 #' @param measure Optional effect-measure label (e.g. "OR"); inferred if NULL.
+#' @param digits Decimal places for the estimate and CI (default 2; fixed, never scientific).
 #' @param flextable Logical; if TRUE and the 'flextable' package is available,
 #'   return a \code{flextable} ready for Word/HTML; otherwise a data frame.
 #' @param ... Passed to \code{\link{interpret}} when \code{x} is a model.
@@ -38,16 +39,18 @@
 #' @examples
 #' azul_table(glm(am ~ wt + hp, within(mtcars, am <- factor(am)), family = binomial))
 #' @export
-azul_table <- function(x, measure = NULL, flextable = FALSE, ...) {
+azul_table <- function(x, measure = NULL, flextable = FALSE, digits = 2, ...) {
   int <- if (inherits(x, "azul_interpretation")) x else interpret(x, ...)
   est <- int$estimates
   if (is.null(est) || !is.data.frame(est) || !("estimate" %in% names(est)))
     stop("No estimates table is available for this object.", call. = FALSE)
   meas <- measure %||% .measure_label(int$method)
   term <- if ("term" %in% names(est)) est$term else rownames(est)
+  # fixed-decimal formatting only (never scientific notation) for the table
+  ff <- function(v) formatC(round(as.numeric(v), digits), format = "f", digits = digits)
   ci <- if (all(c("conf.low", "conf.high") %in% names(est)))
-    paste0(fmt_num(est$estimate), " (", fmt_num(est$conf.low), ", ", fmt_num(est$conf.high), ")")
-  else fmt_num(est$estimate)
+    paste0(ff(est$estimate), " (", ff(est$conf.low), ", ", ff(est$conf.high), ")")
+  else ff(est$estimate)
   pv <- if ("p.value" %in% names(est)) vapply(est$p.value, .p_plain, character(1)) else NA
   df <- data.frame(Variable = term, X = ci, `P-value` = pv,
                    check.names = FALSE, stringsAsFactors = FALSE)
@@ -105,10 +108,10 @@ azul_table <- function(x, measure = NULL, flextable = FALSE, ...) {
 #' azul_report(lm(mpg ~ wt + hp, mtcars), "report.docx")
 #' }
 #' @export
-azul_report <- function(x, file = "azul_report.docx", assumptions = TRUE, ...) {
+azul_report <- function(x, file = "azul_report.docx", assumptions = TRUE, digits = 2, ...) {
   is_model <- !inherits(x, "azul_interpretation")
   int <- if (is_model) interpret(x, ...) else x
-  tbl <- tryCatch(azul_table(int), error = function(e) NULL)
+  tbl <- tryCatch(azul_table(int, digits = digits), error = function(e) NULL)
   chk <- if (assumptions && is_model)
     tryCatch(check_assumptions(x), error = function(e) NULL) else NULL
   ext <- tolower(tools::file_ext(file))
