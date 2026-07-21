@@ -10,6 +10,7 @@
   if (inherits(x, c("Arima", "arima"))) return("tsdiag")
   if (inherits(x, "ts")) return("ts")
   if (inherits(x, c("lmerMod", "glmerMod", "lmerModLmerTest", "lme"))) return("caterpillar")
+  if (inherits(x, c("fa", "principal", "scree"))) return("scree")
   if (inherits(x, c("coxph", "glm", "lm", "negbin", "polr", "clm", "multinom",
                     "azul_interpretation"))) return("forest")
   "forest"
@@ -36,7 +37,8 @@
 #' @export
 azul_plot <- function(x, type = c("auto", "forest", "km", "roc", "residuals",
                                   "forest_meta", "ts", "tsdiag", "acf",
-                                  "caterpillar", "schoenfeld", "funnel", "calibration"),
+                                  "caterpillar", "schoenfeld", "funnel", "calibration",
+                                  "effect", "qqrand", "scree"),
                       main = NULL, ...) {
   type <- match.arg(type)
   if (type == "auto") type <- .azul_plot_type(x)
@@ -53,7 +55,90 @@ azul_plot <- function(x, type = c("auto", "forest", "km", "roc", "residuals",
     schoenfeld   = .azul_schoenfeld(x, ...),
     funnel       = .azul_funnel(x, main = main, ...),
     calibration  = .azul_calibration(x, main = main, ...),
+    effect       = .azul_effect(x, main = main, ...),
+    qqrand       = .azul_qqrand(x, main = main, ...),
+    scree        = .azul_scree(x, main = main, ...),
     stop("Unknown plot type '", type, "'.", call. = FALSE))
+}
+
+# effect / interaction plot: predicted outcome across a focal predictor,
+# split by a moderator when the model contains their interaction.
+.azul_effect <- function(x, focal = NULL, moderator = NULL, main = NULL, ...) {
+  if (!inherits(x, c("lm", "glm")) || inherits(x, "mlm"))
+    stop("Effect plots are supported for lm and glm models.", call. = FALSE)
+  mf <- stats::model.frame(x)
+  resp <- names(mf)[1]
+  preds <- all.vars(stats::delete.response(stats::terms(x)))
+  preds <- intersect(preds, names(mf))
+  is_fac <- vapply(mf[preds], function(z) is.factor(z) || is.character(z), logical(1))
+  if (is.null(focal)) focal <- (preds[!is_fac])[1] %||% preds[1]
+  if (is.na(focal)) stop("No usable predictor found for an effect plot.", call. = FALSE)
+  ilabs <- attr(stats::terms(x), "term.labels"); ilabs <- ilabs[grepl(":", ilabs)]
+  if (is.null(moderator)) {
+    for (t in ilabs) { pp <- strsplit(t, ":")[[1]]
+      if (focal %in% pp) { other <- setdiff(pp, focal)[1]
+        if (!is.na(other) && isTRUE(is_fac[other])) { moderator <- other; break } } }
+  }
+  base_row <- lapply(preds, function(p) if (is_fac[p]) factor(levels(factor(mf[[p]]))[1], levels = levels(factor(mf[[p]]))) else mean(mf[[p]], na.rm = TRUE))
+  names(base_row) <- preds
+  fx <- if (is_fac[focal]) levels(factor(mf[[focal]])) else seq(min(mf[[focal]], na.rm = TRUE), max(mf[[focal]], na.rm = TRUE), length.out = 100)
+  mods <- if (!is.null(moderator)) levels(factor(mf[[moderator]])) else NA
+  cols <- grDevices::palette.colors(max(length(mods), 1))
+  first <- TRUE; ry <- c()
+  preds_list <- list()
+  for (mi in seq_along(mods)) {
+    nd <- base_row[rep(1, length(fx))]; nd <- as.data.frame(lapply(preds, function(p) rep(base_row[[p]], length(fx)))); names(nd) <- preds
+    nd[[focal]] <- fx
+    if (!is.null(moderator)) nd[[moderator]] <- factor(mods[mi], levels = levels(factor(mf[[moderator]])))
+    pr <- as.numeric(stats::predict(x, newdata = nd, type = "response"))
+    preds_list[[mi]] <- pr; ry <- range(c(ry, pr), na.rm = TRUE)
+  }
+  ylab <- if (inherits(x, "glm") && stats::family(x)$family == "binomial") "Predicted probability" else paste0("Predicted ", resp)
+  op <- graphics::par(mar = c(4, 4, 3, 1)); on.exit(graphics::par(op))
+  xf <- if (is_fac[focal]) seq_along(fx) else fx
+  graphics::plot(xf, preds_list[[1]], type = if (is_fac[focal]) "b" else "l", ylim = ry,
+    xaxt = if (is_fac[focal]) "n" else "s", lwd = 2, col = cols[1],
+    xlab = focal, ylab = ylab, main = main %||% paste0("Effect plot: ", resp, " vs ", focal), ...)
+  if (is_fac[focal]) graphics::axis(1, at = seq_along(fx), labels = fx)
+  if (length(mods) > 1) for (mi in 2:length(mods)) graphics::lines(xf, preds_list[[mi]], lwd = 2, col = cols[mi], type = if (is_fac[focal]) "b" else "l")
+  if (!is.null(moderator)) graphics::legend("topleft", legend = paste0(moderator, " = ", mods), col = cols[seq_along(mods)], lwd = 2, bty = "n", cex = 0.9)
+  body <- paste0("Model-predicted ", tolower(ylab), " across ", focal,
+    if (!is.null(moderator)) paste0(", separately for each level of ", moderator,
+      ". Non-parallel lines show the interaction: the effect of ", focal, " differs across ", moderator, ".")
+    else ", with the other predictors held at their mean or reference level.")
+  invisible(new_interpretation("Effect plot", body, notes = "Figure drawn by azul_plot()."))
+}
+
+# Q-Q plot of the random effects (mixed-model normality)
+.azul_qqrand <- function(x, main = NULL, ...) {
+  re <- if (inherits(x, c("lmerMod", "glmerMod", "lmerModLmerTest")) && requireNamespace("lme4", quietly = TRUE))
+    lme4::ranef(x)[[1]] else if (inherits(x, "lme") && requireNamespace("nlme", quietly = TRUE)) nlme::ranef(x) else NULL
+  if (is.null(re)) stop("Could not extract random effects.", call. = FALSE)
+  v <- as.numeric(as.data.frame(re)[[1]])
+  op <- graphics::par(mar = c(4, 4, 3, 1)); on.exit(graphics::par(op))
+  stats::qqnorm(v, main = main %||% "Normal Q-Q of random effects", pch = 19, ...); stats::qqline(v, col = "red")
+  invisible(new_interpretation("Q-Q plot of random effects",
+    c("Points close to the line support the assumption that the random effects are normally distributed.",
+      "Systematic departures (curved or S-shaped patterns) indicate non-normal random effects."),
+    notes = "Figure drawn by azul_plot()."))
+}
+
+# scree plot of eigenvalues for factor analysis / PCA
+.azul_scree <- function(x, main = NULL, ...) {
+  ev <- if (inherits(x, "scree")) x$pcv
+    else if (inherits(x, c("fa", "principal"))) x$values %||% x$e.values
+    else if (is.matrix(x) && nrow(x) == ncol(x)) eigen(x, only.values = TRUE)$values
+    else eigen(stats::cor(as.data.frame(x), use = "pairwise"), only.values = TRUE)$values
+  if (is.null(ev)) stop("Could not obtain eigenvalues for a scree plot.", call. = FALSE)
+  op <- graphics::par(mar = c(4, 4, 3, 1)); on.exit(graphics::par(op))
+  graphics::plot(seq_along(ev), ev, type = "b", pch = 19, xlab = "Component / factor",
+    ylab = "Eigenvalue", main = main %||% "Scree plot", ...)
+  graphics::abline(h = 1, lty = 2, col = "red")
+  k <- sum(ev > 1)
+  invisible(new_interpretation("Scree plot",
+    paste0("Eigenvalues by component. By the Kaiser criterion (eigenvalue > 1, red line) ", k,
+      " component", if (k != 1) "s" else "", " would be retained; the 'elbow' where the curve flattens is an alternative cue. Cross-check with parallel analysis."),
+    notes = "Figure drawn by azul_plot()."))
 }
 
 # caterpillar plot of mixed-model random effects (BLUPs with intervals)

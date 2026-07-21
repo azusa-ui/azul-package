@@ -57,3 +57,22 @@ test_that("azul_plot draws a calibration plot for logistic models", {
   grDevices::dev.off()
   expect_match(as.character(s), "alibrat")
 })
+
+test_that("azul_plot draws effect, qqrand and scree figures", {
+  set.seed(1); n <- 300
+  d <- data.frame(age = rnorm(n, 50, 10), sex = factor(sample(c("F","M"), n, TRUE)))
+  d$dz <- rbinom(n, 1, plogis(-2 + 0.02*d$age + ifelse(d$sex=="M", 0.06*d$age, 0)))
+  f <- tempfile(fileext = ".png"); grDevices::png(f)
+  s1 <- azul_plot(glm(dz ~ age * sex, binomial, d), type = "effect")
+  grDevices::dev.off()
+  expect_match(as.character(s1), "predicted|interaction")
+  skip_if_not_installed("lme4")
+  dd <- data.frame(x = rnorm(200), g = factor(sample(1:20, 200, TRUE)))
+  dd$y <- 2*dd$x + rnorm(20)[as.integer(dd$g)]*2 + rnorm(200)
+  g <- tempfile(fileext = ".png"); grDevices::png(g)
+  s2 <- azul_plot(lme4::lmer(y ~ x + (1|g), dd), type = "qqrand")
+  s3 <- azul_plot(cor(mtcars), type = "scree")
+  grDevices::dev.off()
+  expect_match(as.character(s2), "normal")
+  expect_match(as.character(s3), "Eigenvalues|Kaiser")
+})
