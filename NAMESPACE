@@ -18,6 +18,7 @@ export(azul_table)
 export(azul_report)
 export(azul_survtable)
 export(azul_survcompare)
+export(azul_plot)
 
 S3method(interpret, alpha)
 S3method(interpret, default)
