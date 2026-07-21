@@ -408,3 +408,93 @@ azul_survtable <- function(model,
   sprintf("Weibull shape = %s (95%% CI: %s, %s); scale = %s.",
           f(shape), f(lo), f(hi), f(sig))
 }
+
+
+# ---- distribution comparison by AIC (best-practice model selection) ------
+
+#' Compare parametric survival distributions by AIC
+#'
+#' Best practice for a parametric survival model is to fit several candidate
+#' distributions to the same data and choose the one with the best fit, judged
+#' by the Akaike information criterion (lower is better) and confirmed with
+#' diagnostic plots. This function fits each distribution with
+#' [survival::survreg()] and returns a ranked comparison table.
+#'
+#' @param formula A survival formula, e.g. `Surv(time, status) ~ sex + age`.
+#' @param data A data frame.
+#' @param dists Distributions to compare (default exponential, Weibull,
+#'   log-logistic, log-normal).
+#' @param digits Decimal places for logLik and AIC (default 1).
+#' @param font,font_size Table font family and size.
+#' @return A [flextable::flextable()] ranked by AIC, with the preferred model
+#'   (smallest AIC) flagged. The tidy comparison data frame is attached as the
+#'   attribute `"table"`.
+#' @examples
+#' library(survival)
+#' azul_survcompare(Surv(time, status) ~ sex + ph.ecog, data = lung)
+#' @export
+azul_survcompare <- function(formula, data,
+                             dists = c("exponential", "weibull", "loglogistic", "lognormal"),
+                             digits = 1, font = "Helvetica", font_size = 10) {
+  if (!requireNamespace("survival", quietly = TRUE))
+    stop("Package 'survival' is required.", call. = FALSE)
+  if (!requireNamespace("flextable", quietly = TRUE) ||
+      !requireNamespace("officer", quietly = TRUE))
+    stop("azul_survcompare() needs the 'flextable' and 'officer' packages.", call. = FALSE)
+
+  labels <- c(exponential = "Exponential", weibull = "Weibull",
+              loglogistic = "Log-logistic", lognormal = "Log-normal")
+  metric <- c(exponential = "PH (HR)", weibull = "PH (HR)",
+              loglogistic = "PO (OR)", lognormal = "AFT only (TR)")
+
+  rows <- list()
+  for (d in dists) {
+    m <- tryCatch(survival::survreg(formula, data = data, dist = d),
+                  error = function(e) NULL)
+    if (is.null(m)) next
+    ll <- as.numeric(stats::logLik(m))
+    k  <- attr(stats::logLik(m), "df")
+    rows[[d]] <- data.frame(Distribution = unname(labels[d]),
+      Metric = unname(metric[d]), logLik = ll, k = k, AIC = stats::AIC(m),
+      stringsAsFactors = FALSE)
+  }
+  if (!length(rows)) stop("No distribution could be fitted to these data.", call. = FALSE)
+  tab <- do.call(rbind, rows)
+  tab <- tab[order(tab$AIC), , drop = FALSE]
+  tab$dAIC <- tab$AIC - min(tab$AIC)
+  best <- tab$Distribution[1]
+
+  disp <- data.frame(
+    Distribution = ifelse(tab$dAIC == 0, paste0(tab$Distribution, " *"), tab$Distribution),
+    Metric = tab$Metric,
+    logLik = formatC(tab$logLik, format = "f", digits = digits),
+    k = tab$k,
+    AIC = formatC(tab$AIC, format = "f", digits = digits),
+    dAIC = formatC(tab$dAIC, format = "f", digits = digits),
+    check.names = FALSE, stringsAsFactors = FALSE)
+  names(disp) <- c("Distribution", "Metric", "logLik", "k", "AIC", "dAIC")
+
+  ft <- flextable::flextable(disp)
+  ft <- flextable::set_caption(ft,
+    caption = "Comparison of parametric survival distributions by AIC")
+  ft <- flextable::add_footer_lines(ft, values = c(
+    sprintf("* Preferred model (lowest AIC): %s.", best),
+    "k, number of estimated parameters; dAIC, AIC minus the smallest AIC. A difference > 2 is meaningful; > 10 is strong.",
+    "Confirm the chosen distribution with diagnostic plots (e.g. Cox-Snell or Q-Q residuals)."))
+  ft <- flextable::font(ft, fontname = font, part = "all")
+  ft <- flextable::fontsize(ft, size = font_size, part = "all")
+  ft <- flextable::fontsize(ft, size = font_size - 1, part = "footer")
+  ft <- flextable::bold(ft, part = "header", bold = TRUE)
+  ft <- flextable::bold(ft, i = which(tab$dAIC == 0), j = 1, part = "body")
+  ft <- flextable::align(ft, j = 1:2, part = "all", align = "left")
+  ft <- flextable::align(ft, j = 3:6, part = "body", align = "center")
+  ft <- flextable::align(ft, j = 3:6, part = "header", align = "center")
+  bd <- officer::fp_border(color = "black", width = 1)
+  ft <- flextable::border_remove(ft)
+  ft <- flextable::hline_top(ft, part = "header", border = bd)
+  ft <- flextable::hline_bottom(ft, part = "header", border = bd)
+  ft <- flextable::hline_bottom(ft, part = "body", border = bd)
+  ft <- flextable::autofit(ft)
+  attr(ft, "table") <- tab
+  ft
+}

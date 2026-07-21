@@ -25,3 +25,13 @@ test_that("azul_survtable supports log-normal (AFT-only) models", {
   ft <- azul_survtable(m)
   expect_s3_class(ft, "flextable")
 })
+
+test_that("azul_survcompare ranks distributions by AIC", {
+  skip_if_not_installed("survival"); skip_if_not_installed("flextable")
+  ft <- azul_survcompare(survival::Surv(time, status) ~ sex + ph.ecog,
+                         data = survival::lung)
+  expect_s3_class(ft, "flextable")
+  tab <- attr(ft, "table")
+  expect_true(all(diff(tab$AIC) >= 0))          # sorted ascending by AIC
+  expect_equal(min(tab$dAIC), 0)                # best model has dAIC 0
+})
