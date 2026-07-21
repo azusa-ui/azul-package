@@ -50,6 +50,6 @@ Suggests:
     neuralnet,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-URL: https://github.com/azusa-ui/azul
-BugReports: https://github.com/azusa-ui/azul/issues
+URL: https://github.com/azusa-ui/azul-package
+BugReports: https://github.com/azusa-ui/azul-package/issues
 Config/roxygen2/version: 8.0.0
