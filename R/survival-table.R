@@ -41,11 +41,11 @@
 #' @examples
 #' library(survival)
 #' m <- survreg(Surv(time, status) ~ sex + ph.ecog, data = lung, dist = "weibull")
-#' survtbl(m)
-#' survtbl(m, exponentiate = FALSE, outcome = "Death")
+#' azul_survtable(m)
+#' azul_survtable(m, exponentiate = FALSE, outcome = "Death")
 #'
 #' @export
-survtbl <- function(model,
+azul_survtable <- function(model,
                     exponentiate = TRUE,
                     digits = 2,
                     outcome = NULL,
@@ -57,19 +57,19 @@ survtbl <- function(model,
   }
   if (!requireNamespace("flextable", quietly = TRUE) ||
       !requireNamespace("officer", quietly = TRUE)) {
-    stop("survtbl() needs the 'flextable' and 'officer' packages; install them first.",
+    stop("azul_survtable() needs the 'flextable' and 'officer' packages; install them first.",
          call. = FALSE)
   }
-  info  <- .survtbl_detect(model)
-  est   <- .survtbl_estimates(model)
-  body  <- .survtbl_body(model, est, exponentiate, info, digits)
-  .survtbl_flextable(body, model, info, exponentiate, outcome, font, font_size)
+  info  <- .azul_survtable_detect(model)
+  est   <- .azul_survtable_estimates(model)
+  body  <- .azul_survtable_body(model, est, exponentiate, info, digits)
+  .azul_survtable_flextable(body, model, info, exponentiate, outcome, font, font_size)
 }
 
 
 # ---- distribution detection & metric labelling ---------------------------
 
-.survtbl_detect <- function(model) {
+.azul_survtable_detect <- function(model) {
   d <- model$dist
   if (identical(d, "exponential")) {
     list(dist = "exponential", dist_label = "exponential",
@@ -87,7 +87,7 @@ survtbl <- function(model,
          est_ratio = "OR", est_log = "log(odds)",
          caption_metric = "Proportional odds")
   } else {
-    stop("survtbl() supports dist = 'exponential', 'weibull' or 'loglogistic'; ",
+    stop("azul_survtable() supports dist = 'exponential', 'weibull' or 'loglogistic'; ",
          "got '", d, "'.", call. = FALSE)
   }
 }
@@ -101,7 +101,7 @@ survtbl <- function(model,
 # beta_j and beta_j/sigma on tau, reproducing SurvRegCensCov::ConvertWeibull()
 # and flexsurv's weibullPH / exp forms exactly.
 
-.survtbl_estimates <- function(model) {
+.azul_survtable_estimates <- function(model) {
   cf  <- stats::coef(model)                 # AFT log-time coefs incl (Intercept)
   V   <- stats::vcov(model)                 # includes Log(scale) if estimated
   sig <- model$scale
@@ -138,11 +138,11 @@ survtbl <- function(model,
 
 # ---- number formatting ---------------------------------------------------
 
-.survtbl_fmt_num <- function(x, digits) formatC(x, format = "f", digits = digits)
+.azul_survtable_fmt_num <- function(x, digits) formatC(x, format = "f", digits = digits)
 
 # adaptive: very small / very large magnitudes (e.g. an exponentiated baseline
 # hazard) print in scientific form instead of collapsing to "0.00"
-.survtbl_fmt_val <- function(x, digits) {
+.azul_survtable_fmt_val <- function(x, digits) {
   ax <- abs(x)
   if (is.finite(x) && ax != 0 && (ax < 0.01 || ax >= 1e4)) {
     formatC(x, format = "e", digits = 2)
@@ -152,13 +152,13 @@ survtbl <- function(model,
 }
 
 # p-values are always to 3 dp, with a "<0.001" floor, independent of `digits`
-.survtbl_fmt_p <- function(p) {
+.azul_survtable_fmt_p <- function(p) {
   ifelse(is.na(p), "",
     ifelse(p < 0.001, "<0.001", formatC(p, format = "f", digits = 3)))
 }
 
 # one estimate/CI/SE triplet for a metric, honouring `exponentiate`
-.survtbl_fmt_metric <- function(est, se, exponentiate, digits) {
+.azul_survtable_fmt_metric <- function(est, se, exponentiate, digits) {
   z <- stats::qnorm(0.975)
   lo <- est - z * se
   hi <- est + z * se
@@ -169,15 +169,15 @@ survtbl <- function(model,
   }
   # estimate & CI use adaptive scientific for extreme magnitudes; SE always
   # respects `digits` (fixed decimals) so the column stays compact
-  list(est = .survtbl_fmt_val(e, digits),
-       ci  = paste0(.survtbl_fmt_val(l, digits), ", ", .survtbl_fmt_val(h, digits)),
-       se  = .survtbl_fmt_num(s, digits))
+  list(est = .azul_survtable_fmt_val(e, digits),
+       ci  = paste0(.azul_survtable_fmt_val(l, digits), ", ", .azul_survtable_fmt_val(h, digits)),
+       se  = .azul_survtable_fmt_num(s, digits))
 }
 
 
 # ---- body: grouped rows (variable header / reference / levels) -----------
 
-.survtbl_body <- function(model, est, exponentiate, info, digits) {
+.azul_survtable_body <- function(model, est, exponentiate, info, digits) {
   blank <- ""
   rows  <- list()
 
@@ -195,13 +195,13 @@ survtbl <- function(model,
                       stat = "Ref.", p = "Ref.", stringsAsFactors = FALSE)
     } else {
       i <- match(coefname, est$term)
-      L <- .survtbl_fmt_metric(est$left_est[i], est$left_se[i], exponentiate, digits)
-      A <- .survtbl_fmt_metric(est$aft_est[i],  est$aft_se[i],  exponentiate, digits)
+      L <- .azul_survtable_fmt_metric(est$left_est[i], est$left_se[i], exponentiate, digits)
+      A <- .azul_survtable_fmt_metric(est$aft_est[i],  est$aft_se[i],  exponentiate, digits)
       r <- data.frame(term = label, indent = indent, rowtype = rowtype,
                       ph_est = L$est, ph_ci = L$ci, ph_se = L$se,
                       aft_est = A$est, aft_ci = A$ci, aft_se = A$se,
-                      stat = .survtbl_fmt_num(est$z[i], digits),
-                      p = .survtbl_fmt_p(est$p[i]),
+                      stat = .azul_survtable_fmt_num(est$z[i], digits),
+                      p = .azul_survtable_fmt_p(est$p[i]),
                       stringsAsFactors = FALSE)
     }
     rows[[length(rows) + 1L]] <<- r
@@ -236,7 +236,7 @@ survtbl <- function(model,
 
 # ---- flextable assembly (APA borders, spanners, caption, footnote) -------
 
-.survtbl_flextable <- function(body, model, info, exponentiate, outcome,
+.azul_survtable_flextable <- function(body, model, info, exponentiate, outcome,
                                font, font_size) {
   est_l <- if (exponentiate) info$est_ratio else info$est_log
   est_r <- if (exponentiate) "TR" else "log(time)"
@@ -270,7 +270,7 @@ survtbl <- function(model,
   ft <- flextable::merge_v(ft, part = "header", j = c(1, 9, 10))
 
   # caption
-  outcome_lab <- if (is.null(outcome)) .survtbl_outcome(model) else outcome
+  outcome_lab <- if (is.null(outcome)) .azul_survtable_outcome(model) else outcome
   caption <- sprintf(
     "%s and accelerated failure time survival model for %s, assuming %s distribution",
     info$caption_metric, outcome_lab, info$dist_label)
@@ -278,7 +278,7 @@ survtbl <- function(model,
 
   # footnotes
   notes <- character(0)
-  if (info$dist == "weibull") notes <- c(notes, .survtbl_weibull_note(model))
+  if (info$dist == "weibull") notes <- c(notes, .azul_survtable_weibull_note(model))
   notes <- c(notes,
     "Statistic and p-value are the Wald test on the log scale; identical for HR/OR and TR.")
   ft <- flextable::add_footer_lines(ft, values = notes)
@@ -335,7 +335,7 @@ survtbl <- function(model,
 
 # ---- helpers: outcome name & Weibull footnote ----------------------------
 
-.survtbl_outcome <- function(model) {
+.azul_survtable_outcome <- function(model) {
   resp <- attr(stats::terms(model), "variables")[[2]]  # e.g. Surv(time, status)
   if (is.call(resp) && length(resp) >= 2) {
     return(deparse(resp[[2]]))                          # first Surv() arg = time
@@ -346,7 +346,7 @@ survtbl <- function(model,
 # Weibull footnote: shape = 1/sigma with 95% CI (symmetric on log scale, as in
 # flexsurv), and scale = sigma. Matches survreg's reported "Scale=" and flexsurv
 # shape estimate/CI.
-.survtbl_weibull_note <- function(model, digits = 2) {
+.azul_survtable_weibull_note <- function(model, digits = 2) {
   sig   <- model$scale
   shape <- 1 / sig
   V     <- stats::vcov(model)
