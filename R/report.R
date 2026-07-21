@@ -54,18 +54,38 @@ azul_table <- function(x, measure = NULL, flextable = FALSE, ...) {
   names(df)[2] <- paste0(meas, " (95% CI)")
   attr(df, "method") <- int$method
   attr(df, "measure") <- meas
+  attr(df, "adjust") <- if (length(term) > 1) term else character(0)
   class(df) <- c("azul_table", "data.frame")
-  if (flextable && requireNamespace("flextable", quietly = TRUE)) {
-    ft <- flextable::flextable(as.data.frame(df))
-    ft <- flextable::add_footer_lines(ft,
-      paste0(meas, ", ", switch(meas, OR = "odds ratio", HR = "hazard ratio",
-             IRR = "incidence rate ratio", RRR = "relative risk ratio",
-             b = "regression coefficient", "estimate"),
-             "; CI, confidence interval. ", int$method, "."))
-    ft <- flextable::autofit(ft)
-    return(ft)
-  }
+  if (flextable && requireNamespace("flextable", quietly = TRUE)) return(.azul_flextable(df, int$method, meas))
   df
+}
+
+# APA three-line table: bold predictor names, adjustment footnote, only the
+# top / header / bottom rules.
+.azul_flextable <- function(df, method, meas) {
+  ft <- flextable::flextable(as.data.frame(df))
+  meas_long <- switch(meas, OR = "odds ratio", HR = "hazard ratio",
+    IRR = "incidence rate ratio", RRR = "relative risk ratio",
+    b = "regression coefficient", "estimate")
+  adj <- attr(df, "adjust")
+  foot <- paste0(meas, ", ", meas_long, "; CI, confidence interval. ", method, ".")
+  if (length(adj) > 1)
+    foot <- c(foot, paste0("All estimates are mutually adjusted for the other predictors in the model (",
+                           paste(adj, collapse = ", "), ")."))
+  ft <- flextable::add_footer_lines(ft, values = foot)
+  ft <- flextable::bold(ft, part = "header")
+  ft <- flextable::bold(ft, j = 1, part = "body")          # bold predictor names
+  ft <- flextable::align(ft, j = 1, align = "left", part = "all")
+  ft <- flextable::align(ft, j = seq(2, ncol(df)), align = "center", part = "all")
+  if (requireNamespace("officer", quietly = TRUE)) {
+    bd <- officer::fp_border(color = "black", width = 1)
+    ft <- flextable::border_remove(ft)
+    ft <- flextable::hline_top(ft, part = "header", border = bd)     # top rule
+    ft <- flextable::hline_bottom(ft, part = "header", border = bd)  # under header
+    ft <- flextable::hline_bottom(ft, part = "body", border = bd)    # bottom rule
+  }
+  ft <- flextable::fontsize(ft, size = 9, part = "footer")
+  flextable::autofit(ft)
 }
 
 #' Write a one-call report (Word or HTML)
@@ -122,8 +142,11 @@ azul_report <- function(x, file = "azul_report.docx", assumptions = TRUE, ...) {
   h <- c("<!doctype html><html><head><meta charset='utf-8'><title>azul report</title>",
     "<style>body{font-family:Georgia,serif;max-width:820px;margin:40px auto;line-height:1.5;color:#222}",
     "h1{font-size:1.4em}h2{font-size:1.1em;border-bottom:1px solid #ddd;padding-bottom:3px}",
-    "table{border-collapse:collapse;margin:12px 0}th,td{border:1px solid #bbb;padding:6px 10px;text-align:left}",
-    "th{background:#f2f2f2}.note{color:#666;font-size:.9em}</style></head><body>",
+    # APA three-line table: rules only at top, under header, and bottom
+    "table{border-collapse:collapse;margin:12px 0;border-top:2px solid #000;border-bottom:2px solid #000}",
+    "th,td{padding:6px 12px;text-align:center;border:none}",
+    "th{border-bottom:1px solid #000}td:first-child,th:first-child{text-align:left;font-weight:bold}",
+    ".note{color:#555;font-size:.85em;margin-top:4px}</style></head><body>",
     paste0("<h1>", esc(int$method), "</h1>"), "<h2>Interpretation</h2>")
   for (p in .split_sentences(int$paragraph)) h <- c(h, paste0("<p>", esc(p), "</p>"))
   if (!is.null(tbl)) {
@@ -132,6 +155,10 @@ azul_report <- function(x, file = "azul_report.docx", assumptions = TRUE, ...) {
     for (i in seq_len(nrow(tbl))) h <- c(h, paste0("<tr>",
       paste0(vapply(tbl[i, ], function(v) paste0("<td>", esc(as.character(v)), "</td>"), character(1)), collapse = ""), "</tr>"))
     h <- c(h, "</table>")
+    adj <- attr(tbl, "adjust")
+    if (length(adj) > 1)
+      h <- c(h, paste0("<p class='note'>All estimates are mutually adjusted for the other predictors in the model (",
+                       esc(paste(adj, collapse = ", ")), ").</p>"))
   }
   if (length(int$assumptions)) h <- c(h, "<h2>Assumptions to check</h2><ul>",
     paste0("<li>", esc(int$assumptions), "</li>"), "</ul>")

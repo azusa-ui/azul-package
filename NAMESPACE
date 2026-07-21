@@ -16,6 +16,7 @@ export(cor_strength)
 export(check_assumptions)
 export(azul_table)
 export(azul_report)
+export(survtbl)
 
 S3method(interpret, alpha)
 S3method(interpret, default)

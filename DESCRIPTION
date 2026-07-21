@@ -2,7 +2,10 @@ Package: azul
 Type: Package
 Title: Thesis-Style Interpretation of Statistical Models and Tables (MJMS/DrPH)
 Version: 0.1.0
-Authors@R: person("AZul", email = "azulmachang@gmail.com", role = c("aut", "cre"))
+Authors@R: c(
+    person("AZul", email = "azulmachang@gmail.com", role = c("aut", "cre")),
+    person("Fittri", "Fahmi", role = "ctb",
+           comment = "original survtbl() parametric survival table function"))
 Description: Turns fitted models, hypothesis tests, and result tables into
     ready-to-paste, manuscript-style interpretation paragraphs following the
     Malaysian Journal of Medical Sciences (MJMS) reporting style (Arifin et al.
