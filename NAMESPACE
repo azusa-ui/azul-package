@@ -22,6 +22,7 @@ export(azul_survcompare)
 export(azul_plot)
 export(azul_arima_suggest)
 export(interpret_bibliometrix)
+export(interpret_prisma)
 
 S3method(interpret, alpha)
 S3method(interpret, default)
