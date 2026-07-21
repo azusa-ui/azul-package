@@ -1,0 +1,55 @@
+Package: azul
+Type: Package
+Title: Thesis-Style Interpretation of Statistical Models and Tables (MJMS/DrPH)
+Version: 0.1.0
+Authors@R: person("AZul", email = "azulmachang@gmail.com", role = c("aut", "cre"))
+Description: Turns fitted models, hypothesis tests, and result tables into
+    ready-to-paste, manuscript-style interpretation paragraphs following the
+    Malaysian Journal of Medical Sciences (MJMS) reporting style (Arifin et al.
+    2016) and SAMPL guidelines used in USM MPH/DrPH epidemiology work. A single
+    generic, interpret(), dispatches on the class of the object: linear,
+    logistic, Poisson/negative-binomial, ordinal, multinomial and conditional
+    logistic regression; GEE and zero-inflated count models; Cox proportional
+    hazards, Kaplan-Meier and parametric survival; linear mixed models;
+    MANOVA/MANCOVA; structural equation and factor models; and common htest
+    objects. Output is third-person, past-tense academic prose that always
+    reports 95 percent confidence intervals, states the reference category,
+    names the test, and reminds the user of the key assumptions to check.
+    Result tables or 'gtsummary' objects are handled by interpret_table().
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    stats,
+    methods
+Suggests:
+    survival,
+    MASS,
+    nnet,
+    ordinal,
+    lme4,
+    nlme,
+    broom,
+    gtsummary,
+    lavaan,
+    geepack,
+    pscl,
+    VGAM,
+    sandwich,
+    performance,
+    emmeans,
+    car,
+    pROC,
+    ResourceSelection,
+    caret,
+    epiDisplay,
+    psych,
+    rpart,
+    randomForest,
+    e1071,
+    neuralnet,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+URL: https://github.com/azusa-ui/azul
+BugReports: https://github.com/azusa-ui/azul/issues
+Config/roxygen2/version: 8.0.0

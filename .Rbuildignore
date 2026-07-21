@@ -1,0 +1,4 @@
+^vignettes$
+^azul\.Rcheck$
+^.*\.Rproj$
+^\.Rproj\.user$
