@@ -89,6 +89,8 @@ azul_report(m, file = "results.docx", outcome = "death")
 | `azul_survtable()` | parametric survival table (PH/PO and AFT side by side; exp/Weibull/log-logistic/log-normal) |
 | `azul_survcompare()` | rank parametric survival distributions by AIC |
 | `azul_arima_suggest()` | data-driven differencing + a starting ARIMA/SARIMA order |
+| `interpret_bibliometrix()` | interpret a bibliometric analysis (bibliometrix object or metrics list) |
+| `interpret_prisma()` | PRISMA 2020 / PRISMA-ScR study-selection flow narrative |
 | `azul_help()` | one-line index of every function |
 
 ### `azul_plot()` figure types
@@ -98,6 +100,64 @@ azul_report(m, file = "results.docx", outcome = "death")
 `schoenfeld` (Cox PH), `funnel` (meta-analysis), `calibration` (logistic),
 `effect` (interaction / simple slopes), `qqrand`, `scree`. Each is auto-selected
 by object class and returns a plain-language interpretation.
+
+## Usage — copy & paste
+
+```r
+library(azul)
+azul_help()                     # list every function
+
+## --- 1. Interpret a model / test -----------------------------------------
+m <- glm(am ~ wt + hp, data = within(mtcars, am <- factor(am)), family = binomial)
+interpret(m, outcome = "manual transmission")   # print: AT A GLANCE + prose
+summary(interpret(m))                           # quick one-line takeaway
+cat(as.character(interpret(m)))                 # single paragraph for the manuscript
+
+interpret(t.test(mpg ~ am, data = mtcars))      # any htest
+interpret(mtcars)                               # a data frame -> Table 1 narrative
+
+## --- 2. Check the assumptions --------------------------------------------
+check_assumptions(m)            # runs Hosmer-Lemeshow, VIF, ... and reports met/violated
+
+## --- 3. Publication-ready table ------------------------------------------
+azul_table(m)                   # data frame (OR with 95% CI, P)
+azul_table(m, digits = 3)       # 3 decimals (default 2; percentages 1 dp, P 3 dp)
+azul_table(m, flextable = TRUE) # three-line APA flextable for Word/HTML
+
+## --- 4. Draw AND interpret the figure ------------------------------------
+azul_plot(m)                    # auto-picks the right figure (forest here)
+azul_plot(coxph(survival::Surv(time, status) ~ age + sex, survival::lung))  # KM/forest
+azul_plot(m, type = "calibration")   # or "effect", "residuals", "roc", ...
+
+## --- 5. One-call report (prose + table + figure + checks) ----------------
+azul_report(m, file = "results.docx", outcome = "manual transmission")
+azul_report(m, file = "results.html")            # dependency-free HTML
+
+## --- Survival ------------------------------------------------------------
+sm <- survival::survreg(survival::Surv(time, status) ~ sex + ph.ecog,
+                        data = survival::lung, dist = "weibull")
+azul_survtable(sm, outcome = "Death")            # PH/AFT table
+azul_survcompare(survival::Surv(time, status) ~ sex, data = survival::lung)  # AIC ranking
+
+## --- Time series ---------------------------------------------------------
+azul_plot(AirPassengers)                         # series + ACF + PACF
+azul_arima_suggest(AirPassengers)                # differencing + starting order
+fit <- arima(log(AirPassengers), c(0,1,1), seasonal = list(order = c(0,1,1), period = 12))
+interpret(fit); azul_plot(fit)                   # model prose + residual diagnostics
+
+## --- Review methodology --------------------------------------------------
+interpret_prisma(list(identified = 2450, duplicates = 610, screened = 1840,
+  excluded_screen = 1660, assessed = 180, excluded_fulltext = 158, included = 22),
+  databases = c("PubMed", "Scopus"), review = "scoping")
+
+interpret_bibliometrix(list(documents = 1240, sources = 210, timespan = "2010:2023",
+  annual_growth = 12.4, avg_citations_per_doc = 18.6, collaboration_index = 3.2),
+  field = "digital health")
+```
+
+**Three output forms for any interpretation:** `print(x)` (spaced, with an
+AT A GLANCE header), `summary(x)` (one-line takeaway), and `as.character(x)`
+(the single flowing paragraph to paste into a manuscript).
 
 ## What it interprets
 
@@ -150,6 +210,10 @@ by object class and returns a plain-language interpretation.
 - Spatial: Moran's I / Geary's C, LISA, Getis-Ord Gi*, SMR, spatial lag/error regression
 - Time series: ARIMA/SARIMA, ADF / KPSS / Ljung-Box
 - Meta-analysis: `metafor::rma`, `meta` (pooled effect, I², Q)
+
+**Review methodology**
+- Bibliometrics: `interpret_bibliometrix()` (bibliometrix object or metrics list)
+- PRISMA flow: `interpret_prisma()` (systematic / scoping, with a consistency check)
 
 **Assumption / helper outputs**
 - `ordinal::nominal_test` / `scale_test`, `epiDisplay::poisgof`, gtsummary tables
